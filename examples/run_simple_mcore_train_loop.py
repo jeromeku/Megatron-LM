@@ -16,7 +16,7 @@ from megatron.core.datasets.utils import compile_helpers
 from megatron.core.datasets.blended_megatron_dataset_builder import BlendedMegatronDatasetBuilder
 from megatron.core.datasets.gpt_dataset import GPTDatasetConfig, MockGPTDataset
 from megatron.training.tokenizer.tokenizer import _NullTokenizer
-
+from megatron.core.distributed.custom_fsdp.fully_sharded_data_parallel import FullyShardedDataParallel 
 
 _SEQUENCE_LENGTH = 64
 
@@ -35,9 +35,16 @@ def initialize_distributed(tensor_model_parallel_size=1, pipeline_model_parallel
 
 def model_provider():
     """Build the model."""
+    from megatron.core.distributed.distributed_data_parallel_config import DistributedDataParallelConfig
+    from megatron.core.optimizer.distrib_optimizer import DistributedOptimizer
 
+    ddp_config = DistributedDataParallelConfig()
+    ddp_config.use_custom_fsdp = True
+    ddp_config.data_parallel_sharding_strategy = "optim_grads_params"
+    # model = GPTModel(transformer_config)
+    
     transformer_config = TransformerConfig(
-        num_layers=2, 
+        num_layers=1, 
         hidden_size=12, 
         num_attention_heads=4, 
         use_cpu_initialization=True, 
@@ -50,6 +57,15 @@ def model_provider():
         vocab_size=100, 
         max_sequence_length=_SEQUENCE_LENGTH,
     )
+
+    model = FullyShardedDataParallel(
+        transformer_config,
+        gpt_model,
+        ddp_config,
+        fsdp_unit_modules = [TransformerLayer, LanguageModelEmbedding],
+    )
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+    optimizer = DistributedOptimizer(optimizer, [model], [model.param_and_grad_buffer])
 
     return gpt_model
 
@@ -120,9 +136,12 @@ if __name__ == "__main__":
     model_parallel_cuda_manual_seed(123)
 
     gpt_model = model_provider()
+
     device = torch.device("cuda")
     gpt_model.to(device)
+    print(f"Model before FSDP:\n{gpt_model}")
 
+    
     optim = Adam(gpt_model.parameters())
 
     train_iterator = get_train_data_iterator()

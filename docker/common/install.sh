@@ -67,9 +67,9 @@ if [ "$ENVIRONMENT" = "dev" ]; then
         "nvidia-modelopt[torch]>=0.29.0" "setuptools<80.0.0"
 fi
 
-# Install heavy optional deps like mamba, causalconv1d, groupedgemm
-uv pip install --no-cache-dir \
-    $MAMBA_WHEEL \
-    $CAUSALCONV1D_WHEEL \
-    $GROUPEDGEMM_WHEEL \
-    "setuptools<80.0.0"
+# # Install heavy optional deps like mamba, causalconv1d, groupedgemm
+# uv pip install --no-cache-dir \
+#     $MAMBA_WHEEL \
+#     $CAUSALCONV1D_WHEEL \
+#     $GROUPEDGEMM_WHEEL \
+#     "setuptools<80.0.0"
