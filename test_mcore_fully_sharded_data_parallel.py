@@ -14,7 +14,10 @@ from megatron.core.optimizer.distrib_optimizer import DistributedOptimizer
 from megatron.core.process_groups_config import GradCommProcessGroups
 from megatron.core.transformer import TransformerConfig
 from tests.unit_tests.test_utilities import Utils
+from pathlib import Path
+import megatron
 
+MEGATRON_ROOT = Path(megatron.core.__file__).parent.parent.resolve().as_posix()
 
 # Test model for testing FSDP
 class TestModel(torch.nn.Module):
@@ -74,12 +77,12 @@ def test_fsdp_with_process_groups(dp_size=1):
     from viztracer import VizTracer
     from pathlib import Path
     import os
-    MEGATRON_ROOT = Path(__file__).parent.resolve().as_posix()
+    TEST_ROOT = Path(__file__).parent.resolve().as_posix()
     TRACE_DIR = 'traces'
     os.makedirs(TRACE_DIR, exist_ok=True)
 
-    tracer = VizTracer(include_files=[MEGATRON_ROOT], log_func_args=True, log_func_retval=True, ignore_c_function=True, ignore_frozen=True)
-
+    tracer = VizTracer(include_files=[MEGATRON_ROOT, TEST_ROOT], log_func_args=True, log_func_retval=True, ignore_c_function=True, ignore_frozen=True)
+    print(f"Tracing dirs: {tracer.include_files}")
     # Skip test if we don't have enough GPUs
     world_size = torch.distributed.get_world_size()
 
@@ -97,9 +100,7 @@ def test_fsdp_with_process_groups(dp_size=1):
     )
 
     # Create two identical models
-    tracer.output_file = f"{TRACE_DIR}/model.init.json"
-    with tracer:
-        model1 = TestModel(input_dim=input_dim, output_dim=output_dim).cuda()
+    model1 = TestModel(input_dim=input_dim, output_dim=output_dim).cuda()
 
     transformer_config = TransformerConfig(
         num_attention_heads=1, num_layers=1, context_parallel_size=1  # Explicitly set CP=1
