@@ -606,7 +606,7 @@ def initialize_model_parallel(
     are on the same DGX box. For example if we are using 2 DGX-1 boxes
     with a total of 16 GPUs, rank 0 to 7 belong to the first box and
     ranks 8 to 15 belong to the second box.
-    """
+    """  # noqa: D202
 
     if get_embedding_ranks is None:
         get_embedding_ranks = default_embedding_ranks
@@ -664,7 +664,7 @@ def initialize_model_parallel(
         order=order,
         rank_offset=0,
     )
-
+    breakpoint()
     # Build expert rank generator
     if expert_tensor_parallel_size is None:
         expert_tensor_parallel_size = tensor_model_parallel_size
@@ -726,6 +726,7 @@ def initialize_model_parallel(
     # is eligible for using the NCCL COLLNET feature.
     # Therefore, dp-cp group, which potentially requires SHARP-enablement,
     # need to be created before all the other groups
+    breakpoint()
     for ranks_with_cp in decoder_rank_generator.get_ranks('dp-cp'):
         group_with_cp = create_group(
             ranks_with_cp,
