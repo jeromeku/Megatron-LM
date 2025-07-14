@@ -664,7 +664,6 @@ def initialize_model_parallel(
         order=order,
         rank_offset=0,
     )
-    breakpoint()
     # Build expert rank generator
     if expert_tensor_parallel_size is None:
         expert_tensor_parallel_size = tensor_model_parallel_size
@@ -726,7 +725,6 @@ def initialize_model_parallel(
     # is eligible for using the NCCL COLLNET feature.
     # Therefore, dp-cp group, which potentially requires SHARP-enablement,
     # need to be created before all the other groups
-    breakpoint()
     for ranks_with_cp in decoder_rank_generator.get_ranks('dp-cp'):
         group_with_cp = create_group(
             ranks_with_cp,
