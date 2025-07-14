@@ -15,6 +15,12 @@ from torch.testing._internal.distributed.fake_pg import FakeStore
 import torch.distributed as dist
 from torch.distributed.device_mesh import init_device_mesh
 from torch.distributed.tensor import DTensor, Replicate
+import torch._inductor.config as inductor_config
+
+from torch._logging import set_logs
+import logging
+set_logs(dynamo=logging.DEBUG, inductor=logging.DEBUG, aot_graphs=True, graph_code_verbose=True, distributed=logging.DEBUG, fsdp=logging.DEBUG, dtensor=logging.DEBUG)
+inductor_config.trace.enabled = True
 
 
 class SimpleLinear(torch.nn.Module):
@@ -36,10 +42,13 @@ def print_params(m: torch.nn.Module):
 
 USE_FAKE = True
 
-def run_model_parallel(model: torch.nn.Module, inp: torch.tensor, mesh: DeviceMesh, use_local_output: bool = False):
+def run_model_parallel(model: torch.nn.Module, inp: torch.tensor, mesh: DeviceMesh, use_local_output: bool = False, compile: bool = True, mode: str = "default"):
     model = parallelize_module(model, mesh,
            {"linear": ColwiseParallel(use_local_output=use_local_output)})
 
+    if compile:
+        model = torch.compile(model, mode=mode)
+    
     out = model(inp)
 
     if isinstance(out, DTensor):
@@ -74,13 +83,16 @@ def main():
 
     hidden_dim = 1024
     seqlen = 128
-    
+    compile = True
+    mode = "default"
+
     model = SimpleLinear(hidden_dim)
     local_inp = torch.randn(seqlen, hidden_dim, device="cuda").chunk(world_size, dim=0)[rank]
     dist_inp = DTensor.from_local(local_inp, device_mesh=mesh, placements=[Shard(0)])
+    
     print(f"{dist_inp._local_tensor.shape=} {dist_inp.shape=}")
 
-    run_model_parallel(model, dist_inp, mesh=mesh, use_local_output=False)
+    run_model_parallel(model, dist_inp, mesh=mesh, use_local_output=False, compile=compile, mode=mode)
 
 
 if __name__ == "__main__":
